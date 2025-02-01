@@ -68,9 +68,9 @@ class JsonApply
             $newValue = $entry[JsonDelta::KEY_NEW_VALUE];
 
             if ($reverse) {
-                if ($type == JsonDelta::TYPE_NEW) {
+                if ($type === JsonDelta::TYPE_NEW) {
                     $type = JsonDelta::TYPE_REMOVED;
-                } elseif ($type == JsonDelta::TYPE_REMOVED) {
+                } elseif ($type === JsonDelta::TYPE_REMOVED) {
                     $type = JsonDelta::TYPE_NEW;
                 }
                 $newValue = $entry[JsonDelta::KEY_ORIG_VALUE];
@@ -79,11 +79,11 @@ class JsonApply
             switch ($type) {
 
                 case JsonDelta::TYPE_NEW:
-                    $data = self::addValue($data, $path, $position, $newValue);
+                    $data = self::addNewValue($data, $path, $position, $newValue);
                     break;
 
                 case JsonDelta::TYPE_CHANGED:
-                    $data = self::setValue($data, $path, $position, $newValue);
+                    $data = self::updateValue($data, $path, $position, $newValue);
                     break;
 
                 case JsonDelta::TYPE_REMOVED:
@@ -122,7 +122,7 @@ class JsonApply
      * @param mixed                          $value    The value to add to the array.
      * @return mixed[]
      */
-    private static function addValue(mixed $array, array $path, int $position, mixed $value): array
+    private static function addNewValue(mixed $array, array $path, int $position, mixed $value): array
     {
         if (!is_array($array)) {
             $array = [];
@@ -134,8 +134,10 @@ class JsonApply
             : $key;
 
         // still more depth to go?
-        if (count($path)) {
-            $array[$key] = self::addValue($array[$key] ?? [], $path, $position, $value);
+        if (count($path) > 0) {
+            $newArray = $array[$key]
+                ?? [];
+            $array[$key] = self::addNewValue($newArray, $path, $position, $value);
             return $array;
         }
 
@@ -152,13 +154,9 @@ class JsonApply
      * @return mixed
      * @throws JsonDiffException When a non-zero position is specified for a non-array.
      */
-    private static function setValue(mixed $array, array $path, int $position, mixed $value): mixed
+    private static function updateValue(mixed $array, array $path, int $position, mixed $value): mixed
     {
-        if (!count($path)) {
-//            // just an internal check to remove a mutation
-//            if ($position != 0) {
-//                throw JsonDiffException::positionSpecifiedForNonArray($position);
-//            }
+        if (count($path) === 0) {
             return $value;
         }
 
@@ -167,14 +165,9 @@ class JsonApply
         }
 
         $key = array_shift($path);
-
-        // still more depth to go?
-        if (count($path)) {
-            $array[$key] = self::setValue($array[$key] ?? [], $path, $position, $value);
-        } else {
-            $key = self::getKeyAtPos($array, $position);
-            $array[$key] = $value;
-        }
+        $newArray = $array[$key]
+            ?? [];
+        $array[$key] = self::updateValue($newArray, $path, $position, $value);
 
         return $array;
     }
@@ -199,8 +192,12 @@ class JsonApply
             : $key;
 
         // still more depth to go?
-        if (count($path)) {
-            $array[$key] = self::removeValue($array[$key] ?? [], $path, $position);
+        if (count($path) > 0) {
+            $newArray = $array[$key]
+                ?? [];
+            if (array_key_exists($key, $array)) {
+                $array[$key] = self::removeValue($newArray, $path, $position);
+            }
         } else {
             $key = self::getKeyAtPos($array, $position);
             unset($array[$key]);
@@ -234,8 +231,8 @@ class JsonApply
         // array_merge doesn't maintain integer keys, so do it manually instead
         $return = [];
         foreach ([$before, [$key => $value], $after] as $partArray) {
-            foreach ($partArray as $index => $value) {
-                $return[$index] = $value;
+            foreach ($partArray as $index => $tempValue) {
+                $return[$index] = $tempValue;
             }
         }
         return $return;
@@ -252,7 +249,7 @@ class JsonApply
     {
         $count = 0;
         foreach (array_keys($array) as $key) {
-            if ($count == $position) {
+            if ($count === $position) {
                 return $key;
             }
             $count++;

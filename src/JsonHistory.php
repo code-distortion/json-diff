@@ -37,13 +37,22 @@ class JsonHistory extends ArrayObjectExtended implements IteratorAggregate, Arra
     /**
      * Build a new JsonHistory object based on a set of snapshots.
      *
-     * @param array<TKey, TValue>|null $snapshots The encoded snapshots to build a new object from.
-     * @return self<TKey, TValue>
+     * @param static|array<TKey, TValue>|null $snapshots The encoded snapshots to build a new object from.
+     * @return static<TKey, TValue>
      */
-    public static function new(?array $snapshots = []): self
+    public static function new(self|array|null $snapshots = []): static
     {
-        /** @var self<TKey, TValue> $return */
-        $return = new self($snapshots ?? []);
+        // if another JsonHistory object is passed, use its data
+        if ($snapshots instanceof static) {
+            $new = new static($snapshots->getArrayCopy());
+            $new->encodedSnapshots = $snapshots->getEncodedSnapshots();
+            $new->encodedSnapshotsAreCached = true;
+            return $new;
+        }
+
+        /** @var static<TKey, TValue> $return */
+        $return = new static($snapshots ?? []);
+
         return $return;
     }
 
@@ -51,20 +60,20 @@ class JsonHistory extends ArrayObjectExtended implements IteratorAggregate, Arra
      * Build a new JsonHistory object based on a set of encoded-snapshots..
      *
      * @param array<TKey, mixed[]>|null $encodedSnapshots The encoded-snapshots to build a new object from.
-     * @return self<TKey, TValue>
+     * @return static<TKey, TValue>
      * @throws JsonDiffException When the encoded snapshot data is invalid.
      */
-    public static function fromEncodedSnapshots(?array $encodedSnapshots = []): self
+    public static function fromEncodedSnapshots(?array $encodedSnapshots = []): static
     {
         $encodedSnapshots ??= [];
 
-        $snapshots = self::buildSnapshotsFromEncodedSnapshots($encodedSnapshots);
+        $snapshots = static::buildSnapshotsFromEncodedSnapshots($encodedSnapshots);
 
-        /** @var self<TKey, TValue> $new */
-        $new = new self($snapshots);
+        /** @var static<TKey, TValue> $new */
+        $new = new static($snapshots);
 
         $new->encodedSnapshots = $encodedSnapshots;
-        // @ infection-ignore-all - TrueValue - alters whether the cache is used, but doesn't affect the outcome
+        // @infection-ignore-all - TrueValue - alters whether the cache is used, but doesn't affect the outcome
         $new->encodedSnapshotsAreCached = true;
 
         return $new;
@@ -81,6 +90,7 @@ class JsonHistory extends ArrayObjectExtended implements IteratorAggregate, Arra
      */
     private static function buildSnapshotsFromEncodedSnapshots(array $encodedSnapshots): array
     {
+
         # $encodedSnapshots = [];
         # $encodedSnapshots[key-1] = initial snapshot data
         # $encodedSnapshots[key-2] = delta changes
@@ -113,17 +123,27 @@ class JsonHistory extends ArrayObjectExtended implements IteratorAggregate, Arra
      *
      * When the key is null, the next one is chosen. If a key is re-used, it will replace the original.
      *
-     * @param TValue                              $data The data to record.
-     * @param CarbonInterface|integer|string|null $key  The key to use. When a Carbon, its timestamp is used.
+     * @param TValue                              $data          The data to record.
+     * @param CarbonInterface|integer|string|null $key           The key to use. When a Carbon, its timestamp is used.
+     * @param boolean                             $allowOverride Whether it's ok to override existing keys or not.
      * @return void
      */
-    public function addSnapshot(mixed $data, CarbonInterface|int|string|null $key = null): void
-    {
+    public function addSnapshot(
+        mixed $data,
+        CarbonInterface|int|string|null $key = null,
+        bool $allowOverride = true
+    ): void {
+
         $key = $this->resolveKey($key);
 
-        !is_null($key)
-            ? $this[$key] = $data
-            : $this[] = $data;
+        if (is_null($key)) {
+            $this[] = $data;
+            return;
+        }
+
+        if ($allowOverride || !parent::offsetExists($key)) {
+            $this[$key] = $data;
+        }
     }
 
     /**
@@ -167,7 +187,7 @@ class JsonHistory extends ArrayObjectExtended implements IteratorAggregate, Arra
 //        // remove snapshots that don't have changes, which might affect which key is last
 //        $this->getEncodedSnapshots();
 
-        return $this->count()
+        return ($this->count() > 0)
             ? $this[$this->keyLast()]
             : null;
     }
@@ -215,10 +235,46 @@ class JsonHistory extends ArrayObjectExtended implements IteratorAggregate, Arra
         }
 
         $this->encodedSnapshots = $encodedSnapshots;
-        // @ infection-ignore-all - TrueValue - alters whether the cache is used, but doesn't affect the outcome
+        // @infection-ignore-all - TrueValue - alters whether the cache is used, but doesn't affect the outcome
         $this->encodedSnapshotsAreCached = true;
 
         return $this->encodedSnapshots;
+    }
+
+
+
+
+
+    /**
+     * Returns whether the requested index exists.
+     *
+     * Alias for offsetExists().
+     *
+     * @see https://php.net/manual/en/arrayobject.offsetexists.php
+     *
+     * @param TKey $key The index being checked.
+     * @return boolean True if the requested index exists, otherwise false.
+     */
+    public function keyExists(mixed $key): bool
+    {
+        $key = $this->resolveKey($key);
+
+        return parent::offsetExists($key);
+    }
+
+    /**
+     * Returns whether the requested index exists.
+     *
+     * @see https://php.net/manual/en/arrayobject.offsetexists.php
+     *
+     * @param TKey $key The index being checked.
+     * @return boolean True if the requested index exists, otherwise false.
+     */
+    public function offsetExists(mixed $key): bool
+    {
+        $key = $this->resolveKey($key);
+
+        return parent::offsetExists($key);
     }
 
 
@@ -231,7 +287,7 @@ class JsonHistory extends ArrayObjectExtended implements IteratorAggregate, Arra
      * @param mixed $key The intended key to use.
      * @return TKey|null
      */
-    private function resolveKey(mixed $key)
+    public static function resolveKey(mixed $key)
     {
         if (is_int($key)) {
             return $key;
@@ -255,7 +311,7 @@ class JsonHistory extends ArrayObjectExtended implements IteratorAggregate, Arra
     /**
      * A hook that's called when the contents of this object has changed.
      *
-     * The snapshots have changed, reset any caches.
+     * e.g. The snapshots have changed, reset any caches.
      *
      * @return void
      */

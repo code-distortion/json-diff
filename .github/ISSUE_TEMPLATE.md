@@ -7,7 +7,6 @@
 #### Versions:
 
 - JSON Diff version:
-- Laravel version:
 - PHP version:
 - OS + version:
 

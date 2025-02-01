@@ -113,7 +113,7 @@ class JsonCompare
 
         // ignore the new values that are in the correct position
         foreach ($originalKeys as $originalKey) {
-            if (reset($newKeys) == $originalKey) {
+            if (reset($newKeys) === $originalKey) {
                 array_shift($newKeys);
             }
         }
@@ -125,7 +125,7 @@ class JsonCompare
             $curPath = array_merge($path, [$originalKey]);
 
             // exists in a different position in the new array
-            if (in_array($originalKey, $newKeys)) {
+            if (in_array($originalKey, $newKeys, true)) {
                 $delta->recordRemovedValue($curPath, $original[$originalKey], $position);
             // exists in the same position, check if its value has changed
             } elseif (array_key_exists($originalKey, $new)) {

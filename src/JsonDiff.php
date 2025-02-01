@@ -8,7 +8,7 @@ use CodeDistortion\JsonDiff\Support\JsonCompare;
 /**
  * Perform data comparison and transformations.
  *
- * Handles scalar values, null, and arrays (containing these).
+ * Handles scalar values, null, and arrays (also containing: scalar values, null, and arrays).
  */
 class JsonDiff
 {

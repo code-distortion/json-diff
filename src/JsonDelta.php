@@ -9,6 +9,9 @@ use CodeDistortion\JsonDiff\Exceptions\JsonDiffException;
  */
 class JsonDelta
 {
+    /** @var list<mixed[]> The journal of changes. */
+    private array $journal = [];
+
 //    public const KEY_TYPE = 'type';
 //    public const KEY_PATH = 'path';
 //    public const KEY_POSITION = 'position';
@@ -37,8 +40,12 @@ class JsonDelta
      * @param array<mixed[]> $journal The record of the changes.
      * @throws JsonDiffException When the journal is invalid.
      */
-    public function __construct(private array $journal = [])
+    public function __construct(array $journal = [])
     {
+        if (!array_is_list($journal)) {
+            throw JsonDiffException::invalidDeltaJournal();
+        }
+
         foreach ($journal as $entry) {
 
             // validate the journal entries
@@ -56,11 +63,11 @@ class JsonDelta
 
             $expectOrigValue = $expectNewValue = false;
 
-            if ($entry[JsonDelta::KEY_TYPE] == self::TYPE_NEW) {
+            if ($entry[JsonDelta::KEY_TYPE] === self::TYPE_NEW) {
                 $expectNewValue = true;
-            } elseif ($entry[JsonDelta::KEY_TYPE] == self::TYPE_CHANGED) {
+            } elseif ($entry[JsonDelta::KEY_TYPE] === self::TYPE_CHANGED) {
                 $expectOrigValue = $expectNewValue = true;
-            } elseif ($entry[JsonDelta::KEY_TYPE] == self::TYPE_REMOVED) {
+            } elseif ($entry[JsonDelta::KEY_TYPE] === self::TYPE_REMOVED) {
                 $expectOrigValue = true;
             }
 
@@ -86,6 +93,8 @@ class JsonDelta
                 }
             }
         }
+
+        $this->journal = $journal;
     }
 
     /**
@@ -166,13 +175,13 @@ class JsonDelta
      */
     public function doesntHaveAlterations(): bool
     {
-        return count($this->journal) == 0;
+        return count($this->journal) === 0;
     }
 
     /**
      * Get the journal array.
      *
-     * @return array<integer, mixed[]>
+     * @return list<mixed[]>
      */
     public function getJournal(): array
     {
