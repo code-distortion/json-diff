@@ -2,7 +2,7 @@
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/code-distortion/json-diff.svg?style=flat-square)](https://packagist.org/packages/code-distortion/json-diff)
 ![PHP Version](https://img.shields.io/badge/PHP-8.2%20to%208.4-blue?style=flat-square)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/code-distortion/json-diff/run-tests.yml?branch=master&style=flat-square)](https://github.com/code-distortion/json-diff/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/code-distortion/json-diff/run-tests.yml?branch=main&style=flat-square)](https://github.com/code-distortion/json-diff/actions)
 [![Buy The World a Tree](https://img.shields.io/badge/treeware-%F0%9F%8C%B3-lightgreen?style=flat-square)](https://plant.treeware.earth/code-distortion/json-diff)
 [![Contributor Covenant](https://img.shields.io/badge/contributor%20covenant-v2.1%20adopted-ff69b4.svg?style=flat-square)](.github/CODE_OF_CONDUCT.md)
 
