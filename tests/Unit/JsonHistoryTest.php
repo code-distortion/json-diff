@@ -102,7 +102,9 @@ class JsonHistoryTest extends PHPUnitTestCase
         // copied from the $history instance
         $reflectionClass = new ReflectionClass($history2);
         $encodedSnapshotsAreCachedProp = $reflectionClass->getProperty('encodedSnapshotsAreCached');
-        $encodedSnapshotsAreCachedProp->setAccessible(true);
+        if (PHP_VERSION_ID < 80500) {
+            $encodedSnapshotsAreCachedProp->setAccessible(true);
+        }
         self::assertTrue($encodedSnapshotsAreCachedProp->getValue($history2));
         self::assertSame($data, $history2->getSnapshots());
 
